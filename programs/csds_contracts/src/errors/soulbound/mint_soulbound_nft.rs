@@ -11,3 +11,17 @@ pub enum MintSoulboundNftErrorCode {
     #[msg("Unauthorized")]
     Unauthorized,
 }
+
+#[error_code]
+pub enum CSDSError {
+    #[msg("Unauthorized: Only the creator can perform this action")]
+    Unauthorized,
+    #[msg("Invalid report ID")]
+    InvalidReportId,
+    #[msg("NFT is not a share NFT")]
+    NotShareNFT,
+    #[msg("Share NFT not found for organization")]
+    ShareNFTNotFound,
+    #[msg("Arithmetic overflow occurred")]
+    Overflow,
+}

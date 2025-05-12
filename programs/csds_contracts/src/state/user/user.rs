@@ -9,7 +9,7 @@ pub struct UserAssetData {
 
 impl UserAssetData {
     pub const MAX_SIZE: usize = 8  // discriminator
-        + 8                        // id
+        + 8                       // id
         + 32                      // asset
         + 8; // created_at
 }
