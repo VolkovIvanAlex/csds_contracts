@@ -1,5 +1,8 @@
 use anchor_lang::prelude::*;
-use mpl_core::instructions::CreateV2CpiBuilder;
+use mpl_core::{
+    instructions::CreateV2CpiBuilder,
+    types::{FreezeDelegate, Plugin, PluginAuthority, PluginAuthorityPair},
+};
 
 use crate::{
     errors::soulbound::CSDSError,
@@ -9,6 +12,7 @@ use crate::{
 pub fn share_report(
     ctx: Context<ShareReport>,
     report_id: u64,
+    report_name: String,
     share_index: u64,
     content_uri: String,
 ) -> Result<()> {
@@ -30,15 +34,17 @@ pub fn share_report(
         .asset(&ctx.accounts.share_nft)
         .collection(Some(&ctx.accounts.collection))
         .authority(Some(&ctx.accounts.creator))
-        .name(format!("Report {} Share {}", report_id, share_index))
+        .payer(&ctx.accounts.creator) // Explicitly set payer
+        .system_program(&ctx.accounts.system_program) // Added system_program
+        .name(format!("Report {} (Shared)", report_name))
         .uri(content_uri.clone())
-        .invoke_signed(&[&[
-            b"share_nft",
-            creator.as_ref(),
-            report_id.to_le_bytes().as_ref(),
-            share_index.to_le_bytes().as_ref(),
-            &[ctx.bumps.share_data],
-        ]])?;
+        // .plugins(vec![PluginAuthorityPair {
+        //     plugin: Plugin::FreezeDelegate(FreezeDelegate { frozen: true }),
+        //     authority: Some(PluginAuthority::Address {
+        //         address: (ctx.accounts.creator.key()),
+        //     }),
+        // }])
+        .invoke()?;
 
     // Initialize report data for share NFT
     let report_data = &mut ctx.accounts.share_data;
@@ -51,7 +57,7 @@ pub fn share_report(
 }
 
 #[derive(Accounts)]
-#[instruction(report_id: u64, share_index: u64, content_uri: String)]
+#[instruction(report_id: u64, report_name: String, share_index: u64, content_uri: String)]
 pub struct ShareReport<'info> {
     #[account(
         seeds = [b"report_collection", creator.key().as_ref(), report_id.to_le_bytes().as_ref()],
@@ -68,10 +74,9 @@ pub struct ShareReport<'info> {
     pub share_data: Account<'info, ReportData>,
     /// CHECK: Initialized by Metaplex Core
     #[account(mut)]
-    pub collection: AccountInfo<'info>,
-    /// CHECK: Initialized by Metaplex Core
+    pub collection: Signer<'info>,
     #[account(mut)]
-    pub share_nft: AccountInfo<'info>,
+    pub share_nft: Signer<'info>,
     #[account(mut)]
     pub creator: Signer<'info>,
     /// CHECK: Organization to share with

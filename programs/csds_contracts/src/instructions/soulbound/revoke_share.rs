@@ -32,13 +32,7 @@ pub fn revoke_share(ctx: Context<RevokeShare>, report_id: u64, share_index: u64)
         .collection(Some(&ctx.accounts.collection))
         .authority(Some(&ctx.accounts.creator))
         .payer(&ctx.accounts.creator)
-        .invoke_signed(&[&[
-            b"share_nft",
-            creator.as_ref(),
-            report_id.to_le_bytes().as_ref(),
-            share_index.to_le_bytes().as_ref(),
-            &[ctx.bumps.share_data],
-        ]])?;
+        .invoke()?;
 
     Ok(())
 }
@@ -60,10 +54,10 @@ pub struct RevokeShare<'info> {
     pub share_data: Account<'info, ReportData>,
     /// CHECK: Validated by Metaplex Core
     #[account(mut)]
-    pub collection: AccountInfo<'info>,
+    pub collection: Signer<'info>,
     /// CHECK: Validated by Metaplex Core
     #[account(mut)]
-    pub share_nft: AccountInfo<'info>,
+    pub share_nft: Signer<'info>,
     #[account(mut)]
     pub creator: Signer<'info>,
     /// CHECK: Organization to revoke share from

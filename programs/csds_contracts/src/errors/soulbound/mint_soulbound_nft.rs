@@ -24,4 +24,8 @@ pub enum CSDSError {
     ShareNFTNotFound,
     #[msg("Arithmetic overflow occurred")]
     Overflow,
+    #[msg("Organization name exceeds maximum length")]
+    OrgNameTooLong,
+    #[msg("Report name exceeds maximum length")]
+    ReportNameTooLong,
 }

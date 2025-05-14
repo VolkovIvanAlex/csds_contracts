@@ -1,15 +1,35 @@
 use anchor_lang::prelude::*;
-use mpl_core::instructions::{CreateCollectionV2CpiBuilder, CreateV2CpiBuilder};
+use mpl_core::{
+    instructions::{CreateCollectionV2CpiBuilder, CreateV2CpiBuilder},
+    types::{Attribute, Attributes, FreezeDelegate, Plugin, PluginAuthority, PluginAuthorityPair},
+};
 
-use crate::state::{ReportCollection, ReportData};
+use anchor_spl::metadata::{
+    mpl_token_metadata::{self},
+    Metadata,
+};
+
+use crate::{
+    errors::CSDSError,
+    state::{ReportCollection, ReportData},
+};
 
 pub fn create_report(
     ctx: Context<CreateReport>,
     report_id: u64,
+    report_name: String,
     content_uri: String,
     collection_name: String,
     collection_uri: String,
+    organization_name: String,
 ) -> Result<()> {
+    if organization_name.len() > 50 {
+        return Err(CSDSError::OrgNameTooLong.into());
+    }
+    if report_name.len() > 50 {
+        return Err(CSDSError::ReportNameTooLong.into());
+    }
+
     let report_collection = &mut ctx.accounts.report_collection;
     let creator = ctx.accounts.creator.key();
 
@@ -19,22 +39,42 @@ pub fn create_report(
     report_collection.collection_key = ctx.accounts.collection.key();
     report_collection.owner_nft = ctx.accounts.owner_nft.key();
 
+    // Create owner NFT with attributes
+    let attributes = Attributes {
+        attribute_list: vec![
+            Attribute {
+                key: "report_id".to_string(),
+                value: report_id.to_string(),
+            },
+            Attribute {
+                key: "creator".to_string(),
+                value: creator.to_string(),
+            },
+            Attribute {
+                key: "organization_name".to_string(),
+                value: organization_name,
+            },
+        ],
+    };
+
+    let attributes_plugin = PluginAuthorityPair {
+        plugin: Plugin::Attributes(attributes),
+        authority: Some(PluginAuthority::Address {
+            address: ctx.accounts.creator.key(),
+        }), // Creator controls attributes
+    };
+
     // Create Metaplex Core collection
-    CreateCollectionV2CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
-        .collection(&ctx.accounts.collection.to_account_info())
+    CreateCollectionV2CpiBuilder::new(&ctx.accounts.mpl_core_program)
+        .collection(&ctx.accounts.collection)
         .update_authority(Some(&ctx.accounts.update_authority)) // Use creator as update_authority
         .payer(&ctx.accounts.creator)
         .system_program(&ctx.accounts.system_program) // Added system_program
         .name(collection_name)
         .uri(collection_uri)
-        .plugins(vec![])
+        .plugins(vec![attributes_plugin])
+        //.plugins(vec![])
         .invoke()?;
-    // .invoke_signed(&[&[
-    //     b"collection",
-    //     creator.as_ref(),
-    //     report_id.to_le_bytes().as_ref(),
-    //     &[ctx.bumps.collection], // Use collection bump
-    // ]])?;
 
     // Create owner NFT
     CreateV2CpiBuilder::new(&ctx.accounts.mpl_core_program)
@@ -42,16 +82,16 @@ pub fn create_report(
         .collection(Some(&ctx.accounts.collection))
         .authority(Some(&ctx.accounts.creator))
         .payer(&ctx.accounts.creator) // Explicitly set payer
-        .system_program(&ctx.accounts.system_program) // Added system_program
-        .name(format!("Report {} Owner", report_id))
+        .owner(Some(&ctx.accounts.creator))
+        .system_program(&ctx.accounts.system_program)
+        .name(format!("Report {} (Owner)", report_name))
         .uri(content_uri.clone())
-        //.invoke()?;
-        .invoke_signed(&[&[
-            b"owner_nft",
-            creator.as_ref(),
-            report_id.to_le_bytes().as_ref(),
-            &[ctx.bumps.owner_nft], // Use owner_nft bump
-        ]])?;
+        .plugins(vec![PluginAuthorityPair {
+            plugin: Plugin::FreezeDelegate(FreezeDelegate { frozen: true }),
+            authority: None,
+        }])
+        // .plugins(vec![attributes_plugin])
+        .invoke()?;
 
     // Initialize report data for owner NFT
     let report_data = &mut ctx.accounts.report_data;
@@ -64,7 +104,7 @@ pub fn create_report(
 }
 
 #[derive(Accounts)]
-#[instruction(report_id: u64, content_uri: String, collection_name: String, collection_uri: String)]
+#[instruction(report_id: u64, content_uri: String, collection_name: String, collection_uri: String, organization_name: String, report_name: String)]
 pub struct CreateReport<'info> {
     #[account(
         init,
@@ -82,30 +122,35 @@ pub struct CreateReport<'info> {
         bump
     )]
     pub report_data: Account<'info, ReportData>,
+
+    #[account(
+            mut,
+            seeds = [b"metadata", mpl_token_metadata_program.key().as_ref(), creator.key().as_ref()],
+            bump,
+            seeds::program = mpl_token_metadata_program.key(),
+        )]
+    pub metadata_account: UncheckedAccount<'info>,
+
     // #[account(
-    //         init,
-    //         payer = creator,
-    //         space = 100, // Adjust based on Metaplex Core collection size
-    //         seeds = [b"collection", creator.key().as_ref(), report_id.to_le_bytes().as_ref()],
-    //         bump
+    //         mut,
+    //         seeds = [b"metadata", mpl_token_metadata_program.key().as_ref(), creator.key().as_ref(), b"edition"],
+    //         bump,
+    //         seeds::program = mpl_token_metadata_program.key(),
     //     )]
+    // pub master_edition_account: UncheckedAccount<'info>,
+    /// CHECK: Initialized by Metaplex Core
     #[account(mut)]
     pub collection: Signer<'info>,
-    #[account(
-            init,
-            payer = creator,
-            space = 100, // Adjust based on Metaplex Core NFT size
-            seeds = [b"owner_nft", creator.key().as_ref(), report_id.to_le_bytes().as_ref()],
-            bump
-        )]
-    pub owner_nft: AccountInfo<'info>, // PDA for owner NFT
+    /// CHECK: Initialized by Metaplex Core
+    #[account(mut)]
+    pub owner_nft: Signer<'info>,
     /// CHECK: Must be the same as creator or a valid authority
     pub update_authority: Signer<'info>, // Changed to Signer, required
-    // /// CHECK: Initialized by Metaplex Core
-    // #[account(mut)]
-    // pub owner_nft: AccountInfo<'info>,
     #[account(mut)]
     pub creator: Signer<'info>,
+
+    #[account(address = mpl_token_metadata::ID)]
+    pub mpl_token_metadata_program: Program<'info, Metadata>,
     pub system_program: Program<'info, System>,
     #[account(address = mpl_core::ID)]
     pub mpl_core_program: AccountInfo<'info>,

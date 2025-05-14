@@ -5,13 +5,16 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-csds = "J4E53PAX9fJvEH65dsrDgDDDuTD1bu5dbwpkCbjBvDay"
+csds = "67BhTPzgtPcLkKJ4cUaMUBcnTeCRxTRvpjfXfmrrF2Hp"
+
+# [programs.devnet]
+# csds = "6GzJMCEiF2LU3aX4yjoUWwCLVEtNVPCxdz2oZuj3dRE5"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "Devnet"
 wallet = "/Users/volkovivan/.config/solana/id.json"
 
 [scripts]
