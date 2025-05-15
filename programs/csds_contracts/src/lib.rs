@@ -5,7 +5,7 @@ pub mod state;
 
 use instructions::*;
 
-declare_id!("67BhTPzgtPcLkKJ4cUaMUBcnTeCRxTRvpjfXfmrrF2Hp");
+declare_id!("BHeAkLVix2i8wkhqPsNZ2oHJ4HqhXw1EFno9G8SfAqG8");
 
 #[program]
 pub mod csds {

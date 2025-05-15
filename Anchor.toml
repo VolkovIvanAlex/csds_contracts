@@ -5,10 +5,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-csds = "67BhTPzgtPcLkKJ4cUaMUBcnTeCRxTRvpjfXfmrrF2Hp"
-
-# [programs.devnet]
-# csds = "6GzJMCEiF2LU3aX4yjoUWwCLVEtNVPCxdz2oZuj3dRE5"
+csds = "BHeAkLVix2i8wkhqPsNZ2oHJ4HqhXw1EFno9G8SfAqG8"
 
 [registry]
 url = "https://api.apr.dev"
