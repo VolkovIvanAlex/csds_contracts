@@ -20,12 +20,11 @@ CSDS facilitates a three-step process for managing cybersecurity reports:
 ### Create a Report:
 - A creator initializes a report by defining a report_id, name, organization, and IPFS content URI.
 - A Metaplex Core collection is created, along with an owner soulbound NFT locked via FreezeDelegate.
-- Metadata (ID, creator, organization) is stored in a report_collection PDA, and report details are stored in a report_data PDA.
+- Metadata is stored in a report_data PDA.
 
 ### Share a Report:
 - The creator shares the report with an organization by minting a share NFT linked to the report’s collection.
 - A share_data PDA records the share, including the organization’s public key and content URI.
-- Share NFTs are intended to be soulbound (though currently transferable due to commented-out code).
 
 ### Revoke Access:
 - The creator revokes access by burning the share NFT and closing the associated share_data PDA.
